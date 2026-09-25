@@ -1,7 +1,7 @@
 name: Build
 
 # PopCat fork: builds only the targets the PopCat clients link
-# (darwin arm64/amd64, ios arm64, android arm64/arm, windows amd64).
+# (darwin arm64/amd64, ios arm64, android arm64/arm/amd64/386, windows amd64).
 on:
   workflow_dispatch:
     inputs:
@@ -189,8 +189,12 @@ jobs:
         include:
           - arch: arm64
             cc: aarch64-linux-android23-clang
+          - arch: amd64
+            cc: x86_64-linux-android23-clang
           - arch: arm
             cc: armv7a-linux-androideabi23-clang
+          - arch: "386"
+            cc: i686-linux-android23-clang
     steps:
       - uses: actions/checkout@v4
         with:
