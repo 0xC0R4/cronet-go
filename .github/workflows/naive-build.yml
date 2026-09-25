@@ -2,6 +2,8 @@ name: Build
 
 # PopCat fork: builds only the targets the PopCat clients link
 # (darwin arm64/amd64, ios arm64, android arm64/arm/amd64/386, windows amd64).
+# No publish job: the libraries are taken from the run's artifacts and pushed to
+# the popcat-libs branch by hand; the go / go_dev branches are not used.
 on:
   workflow_dispatch:
     inputs:
@@ -256,39 +258,3 @@ jobs:
             include/
             include_cgo.go
             lib_*_cgo.go
-
-  publish:
-    if: github.event_name == 'push' && !contains(github.event.head_commit.message, '[skip publish]')
-    needs: [darwin, windows, android]
-    runs-on: ubuntu-22.04
-    permissions:
-      contents: write
-    env:
-      TARGET_BRANCH: ${{ github.ref_name == 'main' && 'go' || 'go_dev' }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ^1.22
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts/
-
-      - name: Merge artifacts
-        run: |
-          for dir in artifacts/cronet-*/; do
-            cp -r "$dir"/* .
-          done
-          ls -laR lib/ include/ include_cgo.go
-
-      - name: Configure git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Publish
-        run: go run ./cmd/build-naive publish --branch ${{ env.TARGET_BRANCH }}
-
