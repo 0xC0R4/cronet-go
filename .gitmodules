@@ -1,4 +1,4 @@
 [submodule "naiveproxy"]
 	path = naiveproxy
 	url = https://github.com/0xC0R4/naiveproxy.git
-	branch = popcat-dns-no-system-fallback
+	branch = popcat-async-dialer
