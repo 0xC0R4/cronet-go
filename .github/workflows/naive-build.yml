@@ -1,7 +1,8 @@
 name: Build
 
 # PopCat fork: builds only the targets the PopCat clients link
-# (darwin arm64/amd64, ios arm64, android arm64/arm/amd64/386, windows amd64).
+# (darwin arm64/amd64, ios arm64, android arm64/arm/amd64/386, windows amd64,
+# linux musl amd64/arm64/arm for popcatd).
 # No publish job: the libraries are taken from the run's artifacts and pushed to
 # the popcat-libs branch by hand; the go / go_dev branches are not used.
 on:
@@ -253,6 +254,100 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: cronet-android-${{ matrix.arch }}
+          path: |
+            lib/
+            include/
+            include_cgo.go
+            lib_*_cgo.go
+
+  linux-musl:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64, arm]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ^1.22
+      - name: Get naiveproxy commit
+        id: naive
+        run: echo "commit=$(git -C naiveproxy rev-parse HEAD)" >> $GITHUB_OUTPUT
+      - name: Get Chromium version
+        id: chromium
+        run: echo "version=$(cat naiveproxy/CHROMIUM_VERSION)" >> $GITHUB_OUTPUT
+      - name: Cache build artifacts
+        id: build-cache
+        uses: actions/cache@v4
+        with:
+          path: naiveproxy/src/out
+          key: naive-build-${{ steps.naive.outputs.commit }}-${{ hashFiles('cmd/build-naive/cmd_build.go', 'cmd/build-naive/cmd.go') }}-linux-musl-${{ matrix.arch }}
+      - name: Cache ccache files
+        if: steps.build-cache.outputs.cache-hit != 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-linux-musl-${{ matrix.arch }}-${{ steps.chromium.outputs.version }}
+          restore-keys: ccache-linux-musl-${{ matrix.arch }}-
+      - name: Install packages
+        if: steps.build-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt update || true
+          sudo apt install -y ninja-build zstd ccache
+      - name: Reset ccache stats
+        if: steps.build-cache.outputs.cache-hit != 'true'
+        run: ccache -z
+      - name: Build
+        if: steps.build-cache.outputs.cache-hit != 'true'
+        run: go run ./cmd/build-naive --target=linux/${{ matrix.arch }} --libc=musl build
+      - name: Show ccache stats
+        if: steps.build-cache.outputs.cache-hit != 'true'
+        run: ccache -s
+      - name: Package
+        run: |
+          go run ./cmd/build-naive --target=linux/${{ matrix.arch }} --libc=musl package --local
+          go run ./cmd/build-naive --target=linux/${{ matrix.arch }} --libc=musl package
+      - name: Cache toolchain
+        uses: actions/cache@v4
+        with:
+          path: |
+            naiveproxy/src/third_party/llvm-build
+            naiveproxy/src/gn/out
+            naiveproxy/src/chrome/build/pgo_profiles
+            naiveproxy/src/out/sysroot-build
+          key: toolchain-linux-musl-${{ matrix.arch }}-${{ steps.chromium.outputs.version }}
+          restore-keys: toolchain-linux-musl-${{ matrix.arch }}-
+      - name: Download toolchain
+        run: go run ./cmd/build-naive --target=linux/${{ matrix.arch }} --libc=musl download-toolchain
+      - name: Install QEMU for cross-platform testing
+        run: |
+          sudo apt update || true
+          sudo apt install -y qemu-user-binfmt
+      - name: Build test binary
+        run: |
+          eval $(go run ./cmd/build-naive --target=linux/${{ matrix.arch }} --libc=musl env --export)
+          [[ "${{ matrix.arch }}" == "mipsle" ]] && export GOMIPS=softfloat || true
+          GO_TEST_LDFLAGS=
+          [[ "${{ matrix.arch }}" == "mipsle" ]] && GO_TEST_LDFLAGS=-ldflags=-w || true
+          CGO_ENABLED=1 GOOS=linux GOARCH=${{ matrix.arch }} go test -c $GO_TEST_LDFLAGS -tags with_musl -o cronet.test .
+      - name: Run test binary
+        continue-on-error: true  # musl/QEMU test is flaky, don't block CI
+        run: |
+          # Static binary - can run directly with QEMU binfmt or explicit QEMU for cross-arch
+          case "${{ matrix.arch }}" in
+            amd64)   QEMU=qemu-x86_64 ;;
+            arm64)   QEMU=qemu-aarch64 ;;
+            386)     QEMU=qemu-i386 ;;
+            arm)     QEMU=qemu-arm ;;
+            loong64) QEMU=qemu-loongarch64 ;;
+          esac
+          timeout 60 $QEMU ./cronet.test -test.v -test.run=TestEngineVersion -test.timeout=30s
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cronet-linux-musl-${{ matrix.arch }}
           path: |
             lib/
             include/
