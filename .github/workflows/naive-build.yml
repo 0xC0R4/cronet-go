@@ -2,7 +2,7 @@ name: Build
 
 # PopCat fork: builds only the targets the PopCat clients link
 # (darwin arm64/amd64, ios arm64, android arm64/arm/amd64/386, windows amd64,
-# linux musl amd64/arm64/arm for popcatd).
+# linux musl amd64/arm64/arm/mipsle for popcatd).
 # No publish job: the libraries are taken from the run's artifacts and pushed to
 # the popcat-libs branch by hand; the go / go_dev branches are not used.
 on:
@@ -265,7 +265,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [amd64, arm64, arm]
+        arch: [amd64, arm64, arm, mipsle]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -342,6 +342,7 @@ jobs:
             arm64)   QEMU=qemu-aarch64 ;;
             386)     QEMU=qemu-i386 ;;
             arm)     QEMU=qemu-arm ;;
+            mipsle)  QEMU=qemu-mipsel ;;
             loong64) QEMU=qemu-loongarch64 ;;
           esac
           timeout 60 $QEMU ./cronet.test -test.v -test.run=TestEngineVersion -test.timeout=30s
