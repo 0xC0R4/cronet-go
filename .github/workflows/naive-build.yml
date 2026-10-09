@@ -5,17 +5,19 @@ name: Build
 # linux musl amd64/arm64/arm/mipsle for popcatd).
 # No publish job: the libraries are taken from the run's artifacts and pushed to
 # the popcat-libs branch by hand; the go / go_dev branches are not used.
+# Manual runs only: GitHub disables workflows on forks with high Actions usage, and a
+# full run rebuilds Chromium for every target. Pick the jobs and linux-musl arches per run.
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Release tag'
+      jobs:
+        description: 'Comma-separated jobs to run, no spaces: darwin,windows,android,linux-musl'
         type: string
-        required: false
-  push:
-    branches: [main, dev]
-  pull_request:
-    branches: [main, dev]
+        default: 'linux-musl'
+      linux_musl_arch:
+        description: 'JSON array of linux-musl arches'
+        type: string
+        default: '["mipsle"]'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
@@ -23,6 +25,7 @@ concurrency:
 
 jobs:
   darwin:
+    if: contains(format(',{0},', inputs.jobs), ',darwin,')
     runs-on: macos-15
     strategy:
       fail-fast: false
@@ -92,6 +95,7 @@ jobs:
             lib_*_cgo.go
 
   windows:
+    if: contains(format(',{0},', inputs.jobs), ',windows,')
     runs-on: windows-2022
     env:
       SCCACHE_ARM64_VERSION: 0.12.0
@@ -185,6 +189,7 @@ jobs:
             include_cgo.go
 
   android:
+    if: contains(format(',{0},', inputs.jobs), ',android,')
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
@@ -261,11 +266,12 @@ jobs:
             lib_*_cgo.go
 
   linux-musl:
+    if: contains(format(',{0},', inputs.jobs), ',linux-musl,')
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        arch: [amd64, arm64, arm, mipsle]
+        arch: ${{ fromJSON(inputs.linux_musl_arch) }}
     steps:
       - uses: actions/checkout@v4
         with:
