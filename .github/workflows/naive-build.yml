@@ -1,7 +1,7 @@
 name: Build
 
 # PopCat fork: builds only the targets the PopCat clients link
-# (darwin arm64/amd64, ios arm64, android arm64/arm/amd64/386, windows amd64,
+# (darwin arm64/amd64, ios arm64, tvos arm64 + arm64 simulator, android arm64/arm/amd64/386, windows amd64,
 # linux musl amd64/arm64/arm/mipsle for popcatd).
 # No publish job: the libraries are taken from the run's artifacts and pushed to
 # the popcat-libs branch by hand; the go / go_dev branches are not used.
@@ -38,6 +38,11 @@ jobs:
           # iOS
           - target: ios/arm64
             name: ios-arm64
+          # tvOS
+          - target: tvos/arm64
+            name: tvos-arm64
+          - target: tvos/arm64/simulator
+            name: tvos-arm64-simulator
     steps:
       - uses: actions/checkout@v4
         with:
