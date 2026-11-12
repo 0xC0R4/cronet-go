@@ -251,6 +251,7 @@ func buildTarget(t Target) {
 		"enable_reporting=false",
 		"enable_bracketed_proxy_uris=true",
 		"enable_quic_proxy_support=true",
+		"enable_websockets=true", // PopCat: Cronet_WebSocket_* C API
 		"use_nss_certs=false",
 		"enable_backup_ref_ptr_support=false",
 		"enable_dangling_raw_ptr_checks=false",
