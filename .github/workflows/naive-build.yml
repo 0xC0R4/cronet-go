@@ -19,6 +19,11 @@ on:
         type: string
         default: '["mipsle"]'
 
+# Go 1.26.11 rejects -l:libcronet.a in #cgo LDFLAGS (go1.26.10 accepted it); the test-binary
+# steps link the packaged library with it.
+env:
+  CGO_LDFLAGS_ALLOW: '-l:libcronet\.a|-Wl,-wrap,[a-z_]+'
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
