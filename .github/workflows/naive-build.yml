@@ -91,7 +91,7 @@ jobs:
           go run ./cmd/build-naive --target=${{ matrix.target }} package --local
           go run ./cmd/build-naive --target=${{ matrix.target }} package
       - name: Build and run test binary
-        if: matrix.target == 'darwin/amd64'
+        if: matrix.target == 'darwin/arm64'
         run: |
           CGO_ENABLED=1 go -C test test -c -o ../cronet.test .
           ./cronet.test -test.v -test.run=TestEngineVersion
