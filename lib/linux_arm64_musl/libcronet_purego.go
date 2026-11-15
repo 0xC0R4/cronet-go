@@ -2,4 +2,4 @@
 
 package linux_arm64_musl
 
-const Version = "148.0.7778.96"
+const Version = "154.0.8037.49"

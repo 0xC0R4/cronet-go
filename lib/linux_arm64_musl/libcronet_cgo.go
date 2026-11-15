@@ -5,4 +5,4 @@ package linux_arm64_musl
 // #cgo LDFLAGS: -L${SRCDIR} -l:libcronet.a -ldl -lpthread -lrt -lresolv -static
 import "C"
 
-const Version = "148.0.7778.96"
+const Version = "154.0.8037.49"
